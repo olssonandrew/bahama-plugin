@@ -1,0 +1,17 @@
+{
+  "name": "bahama",
+  "owner": {
+    "name": "Bahama",
+    "url": "https://bahama.ai"
+  },
+  "metadata": {
+    "description": "Bahama MCP plugin and workflows for Claude Code private testing."
+  },
+  "plugins": [
+    {
+      "name": "bahama",
+      "source": "./",
+      "description": "Hosted Bahama MCP plus Bahama-specific build and deploy guidance for Claude Code."
+    }
+  ]
+}

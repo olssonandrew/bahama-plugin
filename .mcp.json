@@ -2,10 +2,7 @@
   "mcpServers": {
     "bahama": {
       "type": "http",
-      "url": "https://bahama-demo.vercel.app/api/mcp",
-      "oauth": {
-        "authServerMetadataUrl": "https://bahama-demo.vercel.app/api/auth/.well-known/openid-configuration"
-      }
+      "url": "https://bahama-demo.vercel.app/api/mcp"
     }
   }
 }

@@ -1,6 +1,6 @@
 ---
 name: bahama-builder
-description: Build, provision, and deploy Bahama projects through the Bahama MCP server. Use when creating or updating apps that should run on Bahama, provisioning project storage, preparing a project for deploy, or deploying a React + Vite app with an optional Workers-compatible Hono backend. Use when the user wants to go from idea to running Bahama app, especially for notes apps, CRUD apps, frontend apps with APIs, or any workflow that needs a Bahama MCP connection, project slug, storage provisioning, source packaging, upload, deploy, and deployment status polling.
+description: Build, provision, test locally, and deploy Bahama projects through the Bahama MCP server. Use when creating or updating apps that should run on Bahama, provisioning project storage, preparing a project for deploy, or deploying a React + Vite app with an optional Workers-compatible Hono backend. Use when the user wants to go from idea to running Bahama app, especially for notes apps, CRUD apps, frontend apps with APIs, or any workflow that needs a Bahama MCP connection, project slug, storage provisioning, source packaging, upload, deploy, and deployment status polling.
 ---
 
 # Bahama Builder
@@ -45,6 +45,8 @@ The Bahama MCP should expose these tools:
 - `bahama_start_deploy`
 - `bahama_get_deploy_status`
 - `bahama_get_deploy_instructions`
+- `bahama_create_dev_token`
+
 
 If these tools are missing, stop and explain that the Bahama MCP connection is incomplete.
 
@@ -82,7 +84,7 @@ Allowed:
 - backend entry at `server/index.ts`, `server/index.js`, `server/index.mts`, or `server/index.tsx`
 - Workers-compatible Hono app
 - `export default app`
-- Hono route handlers that use `env.DB` when storage is provisioned
+- Hono route handlers that use `env.DB` when DB is provisioned
 
 Not allowed in the deployable backend entry:
 
@@ -97,9 +99,10 @@ Local development is allowed to use a separate adapter file such as `server/dev.
 
 Important:
 
-- local development database access is still under development in Bahama
-- code that uses `env.DB` is meant for the deployed runtime, not local Vite-only execution
-- do not assume the Bahama storage binding will work locally unless the user explicitly says local runtime support is available
+- local server-side database access is available through `@bahama-ai/sdk`
+- local SDK access uses the project’s live Bahama-managed D1 database through Bahama’s dev proxy
+- deployed Worker code still uses native `env.DB`
+- never expose `BAHAMA_DEV_TOKEN` in browser code, `VITE_*` variables, committed files, or deploy bundles
 
 Good deployable pattern:
 
@@ -121,12 +124,12 @@ app.get("/api/message", (c) => {
 export default app;
 ```
 
-## Storage rules
+## Database Storage Rules
 
-If the app needs storage:
+If the app needs a database:
 
-- mark the project as needing storage through the Bahama project update flow
-- provision storage through the Bahama MCP
+- mark the project as needing DB storage through the Bahama project update flow
+- provision DB storage through the Bahama MCP
 - then write backend code that uses `env.DB`
 
 Do not ask the user for:
@@ -136,11 +139,11 @@ Do not ask the user for:
 - a password
 - a connection string
 
-Bahama binds storage into the runtime when the project state says it exists.
+Bahama binds DB into the runtime when the project state says it exists.
 
 The frontend must never talk to the database directly. Use backend routes.
 
-Minimal useful Hono + storage pattern:
+Minimal useful Hono + db storage pattern:
 
 ```ts
 import {Hono} from "hono";
@@ -181,7 +184,52 @@ app.post("/api/notes", async (c) => {
 export default app;
 ```
 
-If the app uses storage, keep all reads and writes in Hono route handlers. Have the frontend call relative API routes like `/api/notes`.
+If the app uses a DB, keep all reads and writes in Hono route handlers. Have the frontend call relative API routes like `/api/notes`.
+
+
+## Local development with live resources
+
+Bahama DBs use bindings that are not easily compatible with local testing. To enable testing, we have created a development SDK that proxies live database access on local testing. Note that this is LIVE project data, so be cautious to avoid destructive operations or test data pollution. 
+
+1. Provision D1 with `bahama_provision_database`.
+2. Create a dev token with `bahama_create_dev_token`.
+3. Write the returned values to `.env.local`:
+   - `BAHAMA_API_BASE_URL`
+   - `BAHAMA_PROJECT_SLUG`
+   - `BAHAMA_DEV_TOKEN`
+4. Install the SDK:
+   - `npm install @bahama-ai/sdk`
+5. Use `@bahama-ai/sdk/server` from server-side code only.
+
+Use this pattern in Hono/server code:
+
+```ts
+import {Hono} from "hono";
+import {getDb} from "@bahama-ai/sdk/server";
+
+type Env = {
+  Bindings: {
+    DB?: D1Database;
+    BAHAMA_API_BASE_URL?: string;
+    BAHAMA_PROJECT_SLUG?: string;
+    BAHAMA_DEV_TOKEN?: string;
+  };
+};
+
+const app = new Hono<Env>();
+
+app.get("/api/notes", async (c) => {
+  const db = getDb(c.env);
+  const {results} = await db
+    .prepare("SELECT id, text, created_at FROM notes ORDER BY id DESC")
+    .all();
+
+  return c.json({notes: results ?? []});
+});
+
+export default app;
+
+```
 
 ## Project lifecycle
 
@@ -196,29 +244,29 @@ If not, create a new project with:
 - a good slug
 - `framework = react-vite`
 - `backend = none` for frontend-only apps or `backend = hono` for apps needing server routes
-- `d1_enabled = true` only when storage is actually needed
+- `d1_enabled = true` only when DB is actually needed
 
 ### 2. Update project metadata before coding or deploy
 
 Do not wait until deploy to decide architecture if you can avoid it.
 
-If the app needs Hono or storage, update the project first so Bahama is the source of truth.
+If the app needs Hono or DB, update the project first so Bahama is the source of truth.
 
 Typical update:
 
 - set `backend` to `hono`
 - set `d1_enabled = true` if the app needs persistent data
 
-### 3. Provision storage only when needed
+### 3. Provision resources only when needed
 
 If the app needs persistence:
 
-- call the Bahama storage provisioning tool
+- call the Bahama DB storage provisioning tool
 - optionally run a smoke-test SQL query afterward
 
 If the app is frontend-only:
 
-- do not provision storage
+- do not provision DB storage
 
 ### 4. Build the app to the Bahama contract
 

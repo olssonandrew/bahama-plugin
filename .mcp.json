@@ -2,7 +2,7 @@
   "mcpServers": {
     "bahama": {
       "type": "http",
-      "url": "https://bahama.ai/api/mcp"
+      "url": "https://www.bahama.ai/api/mcp"
     }
   }
 }

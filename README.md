@@ -4,7 +4,7 @@ Bahama for Claude Code packages Bahama's hosted MCP server together with a Baham
 
 ## What it includes
 
-- a hosted MCP connection to `https://bahama.ai/api/mcp`
+- a hosted MCP connection to `https://www.bahama.ai/api/mcp`
 - the `bahama-builder` skill
 
 ## Private testing

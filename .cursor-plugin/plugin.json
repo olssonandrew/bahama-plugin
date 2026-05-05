@@ -1,0 +1,27 @@
+{
+  "name": "bahama",
+  "displayName": "Bahama",
+  "description": "Bahama is the agent-first cloud platform that gives Cursor the power to seamlessly build, test, provision, and deploy live apps to the web.",
+  "version": "0.1.1",
+  "author": {
+    "name": "Bahama"
+  },
+  "homepage": "https://bahama.ai",
+  "license": "UNLICENSED",
+  "logo": "assets/logo.png",
+  "keywords": [
+    "cloud",
+    "development",
+    "deployment",
+    "devops",
+    "infrastructure",
+    "react",
+    "database",
+    "storage",
+    "website"
+  ],
+  "category": "developer-tools",
+  "tags": ["mcp", "deployment", "cloud"],
+  "skills": "./skills/",
+  "mcpServers": "./mcp.json"
+}

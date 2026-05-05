@@ -1,26 +1,13 @@
 {
   "name": "bahama",
-  "description": "Connect Claude Code to Bahama's hosted MCP server and use Bahama-aware workflows for project creation, provisioning, and deployment.",
+  "description": "Bahama is the agent-first cloud platform that gives Claude the power to seamlessly build, test, provision, and deploy live apps to the web.",
   "version": "0.1.1",
   "author": {
     "name": "Bahama"
   },
   "homepage": "https://bahama.ai",
   "license": "UNLICENSED",
-  "keywords": [],
+  "keywords": ["bahama", "mcp", "deployment", "cloudflare", "vite", "hono"],
   "mcpServers": "./.mcp.json",
-  "skills": "./skills/",
-  "commands": "./commands/",
-  "interface": {
-    "displayName": "Bahama",
-    "shortDescription": "Deploy apps through Bahama's hosted MCP.",
-    "longDescription": "Connect Claude Code to Bahama's hosted MCP server to create projects, provision D1, and deploy supported React + Vite apps with an optional Hono backend.",
-    "developerName": "Bahama",
-    "category": "Developer Tools",
-    "capabilities": ["Read", "Write"],
-    "websiteURL": "https://bahama.ai",
-    "brandColor": "#0EAE9A",
-    "composerIcon": "./assets/icon.png",
-    "logo": "./assets/logo.png"
-  }
+  "skills": "./skills/"
 }

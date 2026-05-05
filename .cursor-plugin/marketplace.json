@@ -1,0 +1,16 @@
+{
+  "name": "bahama",
+  "owner": {
+    "name": "Bahama"
+  },
+  "metadata": {
+    "description": "Bahama is the agent-first cloud platform that gives Cursor the power to seamlessly build, test, provision, and deploy live apps to the web."
+  },
+  "plugins": [
+    {
+      "name": "bahama",
+      "source": "./",
+      "description": "Agent-first cloud workflows for building, testing, provisioning, and deploying live apps with Bahama."
+    }
+  ]
+}

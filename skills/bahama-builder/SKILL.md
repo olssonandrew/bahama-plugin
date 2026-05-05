@@ -1,329 +1,108 @@
 ---
 name: bahama-builder
-description: Build, provision, test locally, and deploy Bahama projects through the Bahama MCP server. Use when creating or updating apps that should run on Bahama, provisioning project storage, preparing a project for deploy, or deploying a React + Vite app with an optional Workers-compatible Hono backend. Use when the user wants to go from idea to running Bahama app, especially for notes apps, CRUD apps, frontend apps with APIs, or any workflow that needs a Bahama MCP connection, project slug, storage provisioning, source packaging, upload, deploy, and deployment status polling.
+description: Build, provision, test, package, and deploy web services through the agent-native Bahama cloud platform. Use when creating, updating, or managing web apps that should run on Bahama.
 ---
 
 # Bahama Builder
 
-Bahama is an agentic infrastructure platform. It allows an agent to create or load a project, manage its resources, prepare source code for deployment, and deploy a working application with very little human effort. Use the Bahama MCP server as the system of action. Do not call infrastructure provider APIs directly for normal Bahama workflows.
+Bahama is an agentic infrastructure platform. It allows an AI agent to create or load a project, manage its resources, prepare source code for deployment, and deploy a working application with minimal human effort. Use the Bahama MCP server as the system of action. Do not call infrastructure provider APIs directly for normal Bahama workflows.
 
-## Start here
+## Project Selection And Setup
 
-Before doing anything else, make sure you have:
+Every Bahama app must be linked to exactly one Bahama project before coding, provisioning, local testing, or deploying.
 
-- the Bahama MCP plugin installed and available
-- a working OAuth connection to Bahama
-- a Bahama project slug when updating an existing project
+Use a repo-root `bahama.json` file as the local project binding.
 
-If the Bahama MCP tools are not available or the user is not connected:
-
-- tell them they need to connect Bahama and complete the OAuth flow before Bahama operations can work
-- do not invent or bypass auth
-
-If the user does not know their project slug:
-
-- ask whether they already have a Bahama project
-- if they do, use the MCP to look it up or confirm it
-- if they do not, create a new project using their intended app concept and a sensible slug
-
-Do not guess a random project. Use a stable slug.
-
-## Use the MCP, not ad hoc requests
-
-Use the Bahama MCP server as the system of action.
-
-The Bahama MCP should expose these tools:
-
-- `bahama_create_project`
-- `bahama_get_project`
-- `bahama_update_project`
-- `bahama_get_runtime`
-- `bahama_get_database`
-- `bahama_provision_database`
-- `bahama_query_database`
-- `bahama_create_upload_url`
-- `bahama_start_deploy`
-- `bahama_get_deploy_status`
-- `bahama_get_deploy_instructions`
-- `bahama_create_dev_token`
-
-
-If these tools are missing, stop and explain that the Bahama MCP connection is incomplete.
-
-## Supported app contract
-
-Bahama currently supports:
-
-- React + Vite frontend apps
-- optional Hono backend apps under a strict format
-
-Do not build for any other framework unless the user explicitly says Bahama has been extended to support it.
-
-## React + Vite requirements
-
-The app must include:
-
-- `package.json`
-- one lockfile
-- `src/`
-- `index.html`
-
-It may include:
-
-- `public/`
-- `vite.config.*`
-- `tsconfig.json`
-- `server/` when using Hono
-
-## Hono rules
-
-Bahama supports user-authored Hono backends only in a specific format.
-
-Allowed:
-
-- backend entry at `server/index.ts`, `server/index.js`, `server/index.mts`, or `server/index.tsx`
-- Workers-compatible Hono app
-- `export default app`
-- Hono route handlers that use `env.DB` when DB is provisioned
-
-Not allowed in the deployable backend entry:
-
-- `@hono/node-server`
-- `serve(...)`
-- `serveStatic(...)`
-- Express
-- custom Node HTTP server setup
-- any production backend code that expects a long-running Node server process
-
-Local development is allowed to use a separate adapter file such as `server/dev.ts`. The deployable entry is still `server/index.*`.
-
-Important:
-
-- local server-side database access is available through `@bahama-ai/sdk`
-- local SDK access uses the project’s live Bahama-managed D1 database through Bahama’s dev proxy
-- deployed Worker code still uses native `env.DB`
-- never expose `BAHAMA_DEV_TOKEN` in browser code, `VITE_*` variables, committed files, or deploy bundles
-
-Good deployable pattern:
-
-```ts
-import {Hono} from "hono";
-
-type Env = {
-  Bindings: {
-    DB: D1Database;
-  };
-};
-
-const app = new Hono<Env>();
-
-app.get("/api/message", (c) => {
-  return c.json({message: "Hello from the Hono backend!"});
-});
-
-export default app;
+```json
+{
+  "projectSlug": "slug-name",
+  "deploymentType": "deployment-type"
+}
 ```
 
-## Database Storage Rules
+Use only `projectSlug` and `deploymentType` in this file. Do not store dev tokens, secrets, database IDs, upload IDs, or deploy job IDs in `bahama.json`.
 
-If the app needs a database:
+Before changing code or resources:
 
-- mark the project as needing DB storage through the Bahama project update flow
-- provision DB storage through the Bahama MCP
-- then write backend code that uses `env.DB`
+1. Look for `bahama.json` in the repo root.
+2. If it exists, treat `projectSlug` as the intended Bahama project for this folder and confirm it with the MCP `bahama_get_project` to confirm it exists and uses the correct deployment type before mutating resources or deploying.
+3. If this file does not exist, confirm with the user whether they already have a Bahama project slug for this app, or whether they need to create a new one.
+4. If an existing project exists, get the slug, choose or confirm the deployment type, confirm the project through MCP `bahama_get_project`, and create `bahama.json`.
+5. If no Bahama project exists, confirm a new name with the user (lowercase slug with only letters, numbers, and dashes). Choose the deployment type, create the Bahama project via the MCP tool `bahama_create_project` with all required parameters, then create `bahama.json` once successful.
+6. Begin building the app according to the selected deployment type, the rules of this skill, and the user's requirements.
 
-Do not ask the user for:
+Never deploy, provision D1, create dev tokens, query SQL, or direct the user to add project secrets until the slug has been resolved and confirmed.
 
-- a database URL
-- a host
-- a password
-- a connection string
+## Bahama MCP Server
 
-Bahama binds DB into the runtime when the project state says it exists.
+Use the Bahama MCP server as the system of action. It should be installed and authenticated before going further.
 
-The frontend must never talk to the database directly. Use backend routes.
+The MCP tools enable you to act on the user's Bahama account to get, create, and update projects; provision and manage D1 databases; enable local testing of remote resources; and manage the deployment process that puts code live on `https://<slug>.bahama.app` or a custom domain.
 
-Minimal useful Hono + db storage pattern:
+Always use the MCP server to interact with the user's Bahama projects. If the MCP tools are missing, stop and explain that the Bahama MCP connection is incomplete. Do not invent auth, bypass OAuth, or ask for credentials directly.
 
-```ts
-import {Hono} from "hono";
+## Deployment Types
 
-type Env = {
-  Bindings: {
-    DB: D1Database;
-  };
-};
+Choose one supported deployment type before coding.
 
-const app = new Hono<Env>();
+- `vite-hono`: Vite frontend plus Workers-compatible Hono backend on `/api/*`. Default for full-stack apps, CRUD apps, D1-backed apps, webhooks, AI/provider calls, and apps needing server-side secrets. Read `references/vite-hono.md`.
+- `vite-spa`: Vite frontend only. Use for browser-only React, Vue, Svelte, Preact, Solid, or vanilla Vite apps with no DB, no server-side secrets, and no backend routes. Read `references/static-deployments.md`.
+- `static-site`: Raw HTML/CSS/JS with no package install and no build step. Use for simple browser-only sites. Read `references/static-deployments.md`.
+- `static-bundle`: Already-built static assets with `index.html` at root, `dist/`, `build/`, or `public/`. Use when another tool already produced deployable output. Read `references/static-deployments.md`.
+- `hono-api`: Backend-only Hono Worker API with no frontend assets. Use for JSON APIs, webhooks, automation endpoints, and service backends. Read `references/hono-api.md`.
 
-app.get("/api/notes", async (c) => {
-  const {results} = await c.env.DB.prepare(
-    "SELECT id, text, created_at FROM notes ORDER BY id DESC",
-  ).all();
+For React, use Vite. Do not use Next.js, Remix, Nuxt, custom Webpack, Express, Node HTTP servers, or SSR framework adapters unless Bahama explicitly supports them. For existing unsupported projects, assess whether they can be cleanly converted to a supported type and discuss the conversion before rewriting.
 
-  return c.json({
-    notes: results ?? [],
-  });
-});
+## Data Rule
 
-app.post("/api/notes", async (c) => {
-  const body = await c.req.json();
-  const text = typeof body?.text === "string" ? body.text.trim() : "";
+Bahama-managed D1 is available only to server-side Worker/Hono code. Browser code must call backend routes. Never ask the user for a database URL, host, password, or connection string.
 
-  if (!text) {
-    return c.json({error: "text is required"}, 400);
-  }
+If adding SQL, D1 tables, migrations, seed data, or persistent CRUD behavior, read `references/database-and-sql.md` before writing code.
 
-  await c.env.DB.prepare("INSERT INTO notes (text, created_at) VALUES (?, ?)")
-    .bind(text, new Date().toISOString())
-    .run();
+## Secrets Rule
 
-  return c.json({ok: true});
-});
+Bahama project secrets are write-only runtime values for third-party credentials. Do not ask the user to paste raw secret values into chat. Instead, choose the exact secret name, tell the user to add it at `/dashboard/projects/:slug/secrets`, and read it only from server-side Worker/Hono code as `env.SECRET_NAME`.
 
-export default app;
-```
+If adding provider keys, OAuth client secrets, webhook signing secrets, or local testing with secrets, read `references/secrets.md`.
 
-If the app uses a DB, keep all reads and writes in Hono route handlers. Have the frontend call relative API routes like `/api/notes`.
+## Local Testing Rule
 
+Bahama local testing can use live Bahama-managed resources through dev tokens and `@bahama-ai/sdk/server`. Dev tokens and secret values are server-side local configuration only.
 
-## Local development with live resources
+If setting up local Hono development, local D1 access, Vite API proxying, or `.env.local`, read `references/local-development.md`.
 
-Bahama DBs use bindings that are not easily compatible with local testing. To enable testing, we have created a development SDK that proxies live database access on local testing. Note that this is LIVE project data, so be cautious to avoid destructive operations or test data pollution. 
+## Deployment Workflow
 
-1. Provision D1 with `bahama_provision_database`.
-2. Create a dev token with `bahama_create_dev_token`.
-3. Write the returned values to `.env.local`:
-   - `BAHAMA_API_BASE_URL`
-   - `BAHAMA_PROJECT_SLUG`
-   - `BAHAMA_DEV_TOKEN`
-4. Install the SDK:
-   - `npm install @bahama-ai/sdk`
-5. Use `@bahama-ai/sdk/server` from server-side code only.
+Use this order:
 
-Use this pattern in Hono/server code:
+1. Confirm MCP tools and auth.
+2. Load or create the Bahama project.
+3. Choose the deployment type and read the matching reference file.
+4. Update project metadata before coding when backend or D1 needs are known.
+5. Provision D1 only if the app needs persistence.
+6. Add secrets through the dashboard path when server-side credentials are needed.
+7. Build or adjust the app to the selected Bahama contract.
+8. Package the archive according to the deployment type.
+9. Create an upload URL, upload the zip, start deploy, and poll status until terminal when possible.
 
-```ts
-import {Hono} from "hono";
-import {getDb} from "@bahama-ai/sdk/server";
+Read `references/packaging-and-deploy.md` before zipping, uploading, starting deploy, or troubleshooting deploy failures.
 
-type Env = {
-  Bindings: {
-    DB?: D1Database;
-    BAHAMA_API_BASE_URL?: string;
-    BAHAMA_PROJECT_SLUG?: string;
-    BAHAMA_DEV_TOKEN?: string;
-  };
-};
+## General Build Rules
 
-const app = new Hono<Env>();
+- Keep generated apps within the selected Bahama deployment type.
+- Keep frontend code separate from server-only resource access.
+- Use relative frontend API paths like `/api/notes` for Bahama backend routes.
+- Do not expose D1, dev tokens, project secrets, provider keys, or credentials to browser code.
+- Do not add provider-specific deployment config to the app unless Bahama explicitly supports it.
+- Do not rely on unsupported backend formats or long-running Node server processes.
+- Prefer this skill's Bahama contract and the selected reference file over stale local assumptions.
 
-app.get("/api/notes", async (c) => {
-  const db = getDb(c.env);
-  const {results} = await db
-    .prepare("SELECT id, text, created_at FROM notes ORDER BY id DESC")
-    .all();
+## Reference Files
 
-  return c.json({notes: results ?? []});
-});
-
-export default app;
-
-```
-
-## Project lifecycle
-
-Use this order.
-
-### 1. Load or create the project
-
-Get the current project if the user already has one.
-
-If not, create a new project with:
-
-- a good slug
-- `framework = react-vite`
-- `backend = none` for frontend-only apps or `backend = hono` for apps needing server routes
-- `d1_enabled = true` only when DB is actually needed
-
-### 2. Update project metadata before coding or deploy
-
-Do not wait until deploy to decide architecture if you can avoid it.
-
-If the app needs Hono or DB, update the project first so Bahama is the source of truth.
-
-Typical update:
-
-- set `backend` to `hono`
-- set `d1_enabled = true` if the app needs persistent data
-
-### 3. Provision resources only when needed
-
-If the app needs persistence:
-
-- call the Bahama DB storage provisioning tool
-- optionally run a smoke-test SQL query afterward
-
-If the app is frontend-only:
-
-- do not provision DB storage
-
-### 4. Build the app to the Bahama contract
-
-For frontend-only apps:
-
-- write a normal React + Vite app
-- use relative API paths only if the app is meant to call backend routes later
-
-For Hono apps:
-
-- write the React + Vite frontend
-- put deployable backend logic in `server/index.*`
-- have the frontend call relative API routes like `/api/message` or `/api/notes`
-
-### 5. Package and deploy
-
-- request deploy instructions when you need the current packaging contract
-- request an upload URL through the Bahama MCP
-- zip the project root contents cleanly
-- upload the zip to the returned upload target
-- start the deploy
-- poll deploy status until terminal when possible
-
-When preparing the zip:
-
-- zip the project root contents, not the parent directory
-- include only source code, build config, and files needed for install/build
-- do not prebuild before upload
-- do not include generated output or machine-local clutter
-
-Specifically exclude:
-
-- `node_modules/`
-- `dist/`
-- `.git/`
-- `__MACOSX/`
-- `.DS_Store`
-- `coverage/`
-- `*.log`
-- `.env*`
-- editor temp files
-- OS metadata files
-- screenshots, recordings, exports, or notes that are not part of the build
-- large local assets that are not referenced by the app
-- any extra folders that exist only for local experimentation or debugging
-
-If there is any doubt, include only the files needed to run `install` and `build`.
-
-In practice, Bahama deploys are usually fast. Many complete in roughly 15-30 seconds. Poll for status when you can, but do not treat a missed poll as fatal; other reconciliation mechanisms may still resolve the final state later.
-
-## Behavior guidelines
-
-- Prefer using existing Bahama project state over guessing.
-- Use the Bahama MCP tools for provisioning and deploy operations.
-- If required auth or project context is missing, stop and ask the user for it.
-- If the user does not have a project yet, create one with their app idea in mind.
-- Keep the app within the supported Bahama framework contract.
-- Do not mention or require provider-specific deployment config in the app project.
-- Do not ask the user to manually wire deployment bindings.
-- Do not rely on unsupported backend formats.
+- `references/vite-hono.md`: Read for Vite frontend plus Hono backend apps.
+- `references/static-deployments.md`: Read for `static-site`, `static-bundle`, and `vite-spa`.
+- `references/hono-api.md`: Read for backend-only Hono API deployments.
+- `references/database-and-sql.md`: Read before adding D1, SQL, migrations, seed data, or persistent CRUD.
+- `references/secrets.md`: Read before using server-side provider credentials or local secret values.
+- `references/local-development.md`: Read before using dev tokens, `@bahama-ai/sdk`, `.env.local`, or local Hono/Vite API proxying.
+- `references/packaging-and-deploy.md`: Read before creating deploy archives or troubleshooting deploy jobs.

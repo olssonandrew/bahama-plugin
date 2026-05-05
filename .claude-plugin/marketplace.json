@@ -1,17 +1,17 @@
 {
   "name": "bahama",
   "owner": {
-    "name": "Bahama",
-    "url": "https://bahama.ai"
+    "name": "Bahama"
   },
+  "description": "Bahama is the agent-first cloud platform that gives Claude the power to seamlessly build, test, provision, and deploy live apps to the web.",
   "metadata": {
-    "description": "Bahama MCP plugin and workflows for Claude Code private testing."
+    "description": "Bahama is the agent-first cloud platform that gives Claude the power to seamlessly build, test, provision, and deploy live apps to the web."
   },
   "plugins": [
     {
       "name": "bahama",
       "source": "./",
-      "description": "Hosted Bahama MCP plus Bahama-specific build and deploy guidance for Claude Code."
+      "description": "Agent-first cloud workflows for building, testing, provisioning, and deploying live apps with Bahama."
     }
   ]
 }

@@ -7,7 +7,7 @@
     "name": "Bahama"
   },
   "homepage": "https://bahama.ai",
-  "license": "UNLICENSED",
+  "license": "MIT",
   "logo": "assets/logo.png",
   "keywords": [
     "cloud",
